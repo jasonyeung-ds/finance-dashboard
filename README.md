@@ -34,6 +34,7 @@ npm run dev     # then open http://127.0.0.1:5173
 - **Next 30 days**: one timeline that combines payments, statement closings, and your dates.
 
 ## Roadmap
+<<<<<<< HEAD
 
 - [x] Manual entry for card balance, limit, and minimum payment
 - [x] Combined 30-day timeline for payments, statements, and important dates
@@ -43,3 +44,16 @@ npm run dev     # then open http://127.0.0.1:5173
 - [ ] Mobile app version
 - [ ] Performance improvements and bug fixes
 
+=======
+
+- [x] Manual entry for card balance, limit, and minimum payment
+- [x] Combined 30-day timeline for payments, statements, and important dates
+- [ ] Pull card data automatically with the Plaid API
+- [ ] Demo mode with sample data, so it can be hosted publicly
+- [ ] Deploy a live demo
+- [ ] Mobile app version
+- [ ] Performance improvements and bug fixes
+
+## Notes
+- Currently hosted locally
+>>>>>>> b857ec5fe47f654e337fa477c29d4bac8844ef13
