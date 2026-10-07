@@ -39,5 +39,5 @@ npm run dev     # then open http://127.0.0.1:5173
 - [ ] Mobile app version
 - [ ] Performance improvements and bug fixes
 
-## Roadmap
+## Notes
 - Currently hosted locally
