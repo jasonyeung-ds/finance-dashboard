@@ -67,7 +67,7 @@ function CardForm({ initial, onSave, onCancel }) {
   );
 }
 
-export default function CardsPanel({ items, loaded, add, update, remove }) {
+export default function CardsPanel({ items, loaded, add, update, remove, readOnly = false, emptyAction }) {
   const [editing, setEditing] = useState(null); // null | 'new' | card id
 
   const sorted = [...items].sort((a, b) => nextMonthlyDate(a.dueDay) - nextMonthlyDate(b.dueDay));
@@ -76,13 +76,16 @@ export default function CardsPanel({ items, loaded, add, update, remove }) {
     <section className="panel">
       <div className="panel-header">
         <h2>Credit cards</h2>
-        {editing !== 'new' && <button onClick={() => setEditing('new')}>+ Add card</button>}
+        {!readOnly && editing !== 'new' && <button onClick={() => setEditing('new')}>+ Add card</button>}
       </div>
 
       {editing === 'new' && <CardForm onSave={add} onCancel={() => setEditing(null)} />}
 
       {loaded && items.length === 0 && editing !== 'new' && (
-        <p className="empty">No cards yet. Add one to start tracking balances and due dates.</p>
+        <div className="empty">
+          <p>No cards yet. Add one to start tracking balances and due dates.</p>
+          {emptyAction}
+        </div>
       )}
 
       <ul className="card-list">
@@ -98,7 +101,7 @@ export default function CardsPanel({ items, loaded, add, update, remove }) {
           const due = nextMonthlyDate(c.dueDay);
           const stmt = nextMonthlyDate(c.statementDay);
           return (
-            <li key={c.id} className="card-row">
+            <li key={c.id} className={`card-row ${readOnly ? 'read-only' : ''}`}>
               <div className="card-main">
                 <div className="card-title">
                   <strong>{c.name}</strong>
@@ -111,6 +114,12 @@ export default function CardsPanel({ items, loaded, add, update, remove }) {
                 {c.limit > 0 && (
                   <div className="meter" title={`${util.toFixed(1)}% utilization`}>
                     <div className={`meter-fill ${utilizationLevel(util)}`} style={{ width: `${Math.min(100, util)}%` }} />
+                  </div>
+                )}
+                {c.limit > 0 && (
+                  <div className="small">
+                    <span className={utilizationLevel(util)}>{util.toFixed(1)}% used</span>
+                    <span className="muted"> · {money(Math.max(0, c.limit - c.balance))} available</span>
                   </div>
                 )}
                 {c.notes && <div className="muted small">{c.notes}</div>}
@@ -134,17 +143,19 @@ export default function CardsPanel({ items, loaded, add, update, remove }) {
                   </dd>
                 </div>
               </dl>
-              <div className="row-actions">
-                <button className="link" onClick={() => setEditing(c.id)}>
-                  Edit
-                </button>
-                <button
-                  className="link danger"
-                  onClick={() => window.confirm(`Delete ${c.name}?`) && remove(c.id)}
-                >
-                  Delete
-                </button>
-              </div>
+              {!readOnly && (
+                <div className="row-actions">
+                  <button className="link" onClick={() => setEditing(c.id)}>
+                    Edit
+                  </button>
+                  <button
+                    className="link danger"
+                    onClick={() => window.confirm(`Delete ${c.name}?`) && remove(c.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
             </li>
           );
         })}

@@ -8,14 +8,25 @@ function daysInMonth(year, month) {
   return new Date(year, month + 1, 0).getDate();
 }
 
-/** Next date (today or later) that falls on `day` of the month; clamps e.g. 31 -> 30 in short months. */
+export function addDays(date, n) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + n);
+}
+
+export function isSameDay(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+/** The date `day` falls on in the given month; clamps e.g. 31 -> 30 in short months. */
+export function monthlyDateIn(day, year, month) {
+  return new Date(year, month, Math.min(day, daysInMonth(year, month)));
+}
+
+/** Next date (today or later) that falls on `day` of the month. */
 export function nextMonthlyDate(day, from = new Date()) {
   const today = startOfDay(from);
   for (let offset = 0; offset < 2; offset++) {
     const month = new Date(today.getFullYear(), today.getMonth() + offset, 1); // handles Dec -> Jan
-    const y = month.getFullYear();
-    const m = month.getMonth();
-    const date = new Date(y, m, Math.min(day, daysInMonth(y, m)));
+    const date = monthlyDateIn(day, month.getFullYear(), month.getMonth());
     if (date >= today) return date;
   }
   return null;

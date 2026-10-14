@@ -1,66 +1,35 @@
-import { daysUntil, eventDate, formatDate, formatTime, money, nextMonthlyDate, relativeDay } from '../dates.js';
+import { addDays, daysUntil, formatDate, relativeDay } from '../dates.js';
+import { KIND_LABELS, buildSchedule } from '../schedule.js';
 
-const WINDOW_DAYS = 30;
-
-export default function Upcoming({ cards, events }) {
+export default function Upcoming({ cards, events = [], days = 30, kinds, title }) {
   const now = new Date();
-  const items = [
-    ...cards.flatMap((c) => [
-      {
-        key: `${c.id}-due`,
-        kind: 'due',
-        date: nextMonthlyDate(c.dueDay),
-        title: `${c.name} payment due`,
-        detail: c.minPayment ? `Min ${money(c.minPayment)} · Balance ${money(c.balance)}` : `Balance ${money(c.balance)}`,
-      },
-      {
-        key: `${c.id}-stmt`,
-        kind: 'statement',
-        date: nextMonthlyDate(c.statementDay),
-        title: `${c.name} statement closes`,
-      },
-    ]),
-    ...events
-      .map((e) => ({
-        key: e.id,
-        kind: 'event',
-        date: eventDate(e),
-        allDay: !e.time,
-        title: e.title || 'Untitled',
-        detail: [formatTime(e.time), e.notes].filter(Boolean).join(' · '),
-      }))
-      .filter((e) => (e.allDay ? daysUntil(e.date) >= 0 : e.date >= now)),
-  ]
-    .filter((x) => daysUntil(x.date) <= WINDOW_DAYS)
-    .sort((a, b) => a.date - b.date);
+  const items = buildSchedule({ cards, events, from: now, to: addDays(now, days) })
+    .filter((x) => !kinds || kinds.includes(x.kind))
+    // Drop timed events that already happened earlier today.
+    .filter((x) => x.allDay || x.date >= now);
 
   return (
     <section className="panel">
       <div className="panel-header">
-        <h2>Next {WINDOW_DAYS} days</h2>
+        <h2>{title ?? `Next ${days} days`}</h2>
       </div>
       {items.length === 0 ? (
-        <p className="empty">Nothing coming up. Add a card or an important date to see it here.</p>
+        <p className="empty">Nothing coming up in the next {days} days.</p>
       ) : (
         <ul className="timeline">
-          {items.map((x) => {
-            const days = daysUntil(x.date);
-            return (
-              <li key={x.key} className={`timeline-item kind-${x.kind} ${days <= 3 ? 'soon' : ''}`}>
-                <div className="timeline-when">
-                  <strong>{relativeDay(x.date)}</strong>
-                  <span className="muted">{formatDate(x.date)}</span>
-                </div>
-                <div className="timeline-what">
-                  <span className={`badge badge-${x.kind}`}>
-                    {x.kind === 'due' ? 'Payment' : x.kind === 'statement' ? 'Statement' : 'Event'}
-                  </span>
-                  <span>{x.title}</span>
-                  {x.detail && <span className="muted small">{x.detail}</span>}
-                </div>
-              </li>
-            );
-          })}
+          {items.map((x) => (
+            <li key={x.key} className={`timeline-item ${daysUntil(x.date) <= 3 ? 'soon' : ''}`}>
+              <div className="timeline-when">
+                <strong>{relativeDay(x.date)}</strong>
+                <span className="muted">{formatDate(x.date)}</span>
+              </div>
+              <div className="timeline-what">
+                <span className={`badge badge-${x.kind}`}>{KIND_LABELS[x.kind]}</span>
+                <span>{x.title}</span>
+                {x.detail && <span className="muted small">{x.detail}</span>}
+              </div>
+            </li>
+          ))}
         </ul>
       )}
     </section>

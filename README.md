@@ -1,8 +1,10 @@
 # Finance Dashboard
 
-![Finance Dashboard showing three example credit cards, important dates, and a 30-day timeline](docs/screenshot.png)
+| Overview | Calendar |
+|---|---|
+| ![Overview tab showing card totals, utilization, and upcoming card dates](docs/screenshot.png) | ![Calendar tab showing payment, statement, and important dates for the month](docs/calendar.png) |
 
-*Screenshot uses made-up example data.*
+*Screenshots use made-up example data.*
 
 A local dashboard for tracking credit card balances, statement/due dates, and important dates.
 
@@ -27,16 +29,20 @@ npm run dev     # then open http://127.0.0.1:5173
 
 ## Features
 
-- **Credit cards**: balance, limit, minimum payment, and the day of the month the statement
-  closes and the payment is due. Shows each card's next dates and utilization.
-- **Summary**: total balance, total limit, overall utilization, and the next payment due.
-- **Important dates**: anything with a date and optional time. Split into upcoming and past.
-- **Next 30 days**: one timeline that combines payments, statement closings, and your dates.
+The app has three tabs:
+
+- **Overview**: total balance, total credit limit, overall utilization, and the next payment
+  due, plus each card's balance, utilization, available credit, minimum payment, and next
+  statement and due dates, and a list of upcoming card dates.
+- **Calendar**: a month view with every card's payment due date and statement closing date
+  (repeated each month) and your important dates. Click a day to see its details.
+- **Manage**: add, edit, and delete cards and important dates (with optional times).
 
 ## Roadmap
 
 - [x] Manual entry for card balance, limit, and minimum payment
 - [x] Combined 30-day timeline for payments, statements, and important dates
+- [x] Calendar view with recurring payment and statement dates
 - [ ] Pull card data automatically with the Plaid API
 - [ ] Demo mode with sample data, so it can be hosted publicly
 - [ ] Deploy a live demo
