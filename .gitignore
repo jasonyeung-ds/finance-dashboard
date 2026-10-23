@@ -2,3 +2,4 @@ node_modules/
 dist/
 # Your personal financial data - never commit this
 data/
+release/

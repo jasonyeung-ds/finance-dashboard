@@ -2,19 +2,56 @@
   "name": "finance-dashboard",
   "private": true,
   "version": "0.1.0",
+  "description": "Local dashboard for credit card balances, due dates, and important dates",
+  "author": "Jason Yeung",
   "type": "module",
+  "main": "electron/main.js",
   "scripts": {
     "dev": "node scripts/dev.js",
     "start": "vite build && node server/index.js",
-    "build": "vite build"
+    "build": "vite build",
+    "app": "vite build && electron .",
+    "dist:win": "vite build && electron-builder --win"
   },
   "dependencies": {
-    "express": "^5.2.1",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "express": "^5.2.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "vite": "^8.3.3"
+  },
+  "allowScripts": {
+    "electron@45.0.0": true
+  },
+  "build": {
+    "appId": "com.jasonyeung.financedashboard",
+    "productName": "Finance Dashboard",
+    "files": [
+      "dist/**",
+      "server/**",
+      "electron/**",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.exe"
+    }
   }
 }
