@@ -27,3 +27,13 @@ function resource(name) {
 
 export const cardsApi = resource('cards');
 export const eventsApi = resource('events');
+
+const post = (url, data = {}) => request(url, { method: 'POST', body: JSON.stringify(data) });
+
+export const plaidApi = {
+  status: () => request('/api/plaid/status'),
+  linkToken: () => post('/api/plaid/link-token'),
+  exchange: (publicToken, institution) => post('/api/plaid/exchange', { publicToken, institution }),
+  sync: () => post('/api/plaid/sync'),
+  disconnect: (itemId) => request(`/api/plaid/items/${encodeURIComponent(itemId)}`, { method: 'DELETE' }),
+};

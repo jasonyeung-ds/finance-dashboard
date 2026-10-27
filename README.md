@@ -42,9 +42,31 @@ npm run dev     # then open http://127.0.0.1:5173
 
 `npm start` builds the app and serves everything from a single server at http://127.0.0.1:3001.
 
+## Bank connections (Plaid, optional)
+
+Plaid can pull each card's balance, limit, minimum payment, and statement and due dates
+straight from your bank. Manual cards keep working alongside bank-synced ones.
+
+1. Create a free account at [dashboard.plaid.com](https://dashboard.plaid.com/signup) and
+   copy your **client ID** and **Sandbox secret** from *Developers → Keys*.
+2. Copy `.env.example` to `.env` and fill in the keys:
+   - for `npm run dev`: in this project folder
+   - for the desktop app: in `%APPDATA%\Finance Dashboard\`
+3. Restart the app, open **Manage → Bank connections → Connect a bank**.
+   In Sandbox, pick any bank and log in with `user_good` / `pass_good` (Plaid's test login).
+
+Bank-synced cards update when the app opens (if the last sync was over an hour ago) or when
+you click **Sync now**. You can rename them and edit notes; everything else comes from the bank.
+**Disconnect** revokes the connection with Plaid and keeps the cards as manual cards.
+
+Sandbox is free and uses fake data. Using real banks needs Plaid's Trial or paid plan
+(`PLAID_ENV=production` and a production secret). Banks that log in through their own
+website (OAuth) aren't supported yet.
+
 ## Your data
 
 The desktop app and `npm run dev` share one file: `%APPDATA%\Finance Dashboard\db.json`.
+Bank connections are saved next to it in `plaid-items.json`.
 Paste that path into File Explorer's address bar to find it. Copy it somewhere safe to back up.
 Uninstalling the app does not delete it.
 
@@ -59,6 +81,10 @@ The original is left in place as a backup.
 - A strict Content Security Policy only allows the app's own scripts.
 - The desktop window runs with Electron's recommended lockdown (sandbox, context isolation,
   no Node.js in the page), can't navigate to other sites, and denies all device permissions.
+- Plaid keys live only in `.env` (git-ignored and never packaged into the `.exe`).
+- Plaid access tokens are encrypted with Windows DPAPI, so only your Windows account can
+  read them. They are never sent to the page or written to logs, and are kept out of `db.json`.
+- Your bank password is entered in Plaid's own window. This app never sees it.
 - Only the last 4 digits of a card number are ever stored. **Don't put full card numbers or
   passwords in Notes.** The data file is not encrypted.
 

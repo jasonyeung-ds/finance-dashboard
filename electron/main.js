@@ -1,5 +1,5 @@
 // Desktop app: starts the local server on a random port and shows the dashboard in its own window.
-import { app, BrowserWindow, dialog, session } from 'electron';
+import { app, BrowserWindow, dialog, session, shell } from 'electron';
 import { startServer } from '../server/index.js';
 
 // Only one copy at a time, so two windows never write the same data file at once.
@@ -51,7 +51,11 @@ if (!app.requestSingleInstanceLock()) {
     win.webContents.on('will-navigate', (event, target) => {
       if (!isLocal(target)) event.preventDefault();
     });
-    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    // Links that try to open a new window (e.g. Plaid's privacy policy) go to your normal browser instead.
+    win.webContents.setWindowOpenHandler(({ url: target }) => {
+      if (target.startsWith('https://')) shell.openExternal(target);
+      return { action: 'deny' };
+    });
 
     win.on('closed', () => (win = null));
     await win.loadURL(url);

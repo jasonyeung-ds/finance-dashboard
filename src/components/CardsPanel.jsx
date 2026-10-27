@@ -9,6 +9,8 @@ function CardForm({ initial, onSave, onCancel }) {
     initial ? Object.fromEntries(Object.keys(EMPTY).map((k) => [k, initial[k] ?? ''])) : EMPTY,
   );
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  // Bank-synced cards: numbers and dates come from the bank, so only the name and notes are editable.
+  const linked = initial?.source === 'plaid';
 
   const submit = async (e) => {
     e.preventDefault();
@@ -25,33 +27,39 @@ function CardForm({ initial, onSave, onCancel }) {
 
   return (
     <form className="form" onSubmit={submit}>
+      {linked && (
+        <p className="muted small span-2">
+          Synced from {initial.institution}. Balance, limit, and dates update automatically; you can change the name and
+          notes.
+        </p>
+      )}
       <label className="span-2">
         Card name
         <input required value={form.name} onChange={set('name')} placeholder="e.g. Chase Sapphire" autoFocus />
       </label>
       <label>
         Last 4 digits <span className="muted">(optional)</span>
-        <input value={form.last4} onChange={set('last4')} inputMode="numeric" maxLength={4} pattern="\d{4}" />
+        <input value={form.last4} onChange={set('last4')} disabled={linked} inputMode="numeric" maxLength={4} pattern="\d{4}" />
       </label>
       <label>
         Current balance ($)
-        <input type="number" step="0.01" min="0" value={form.balance} onChange={set('balance')} />
+        <input type="number" step="0.01" min="0" value={form.balance} onChange={set('balance')} disabled={linked} />
       </label>
       <label>
         Credit limit ($)
-        <input type="number" step="0.01" min="0" value={form.limit} onChange={set('limit')} />
+        <input type="number" step="0.01" min="0" value={form.limit} onChange={set('limit')} disabled={linked} />
       </label>
       <label>
         Minimum payment ($)
-        <input type="number" step="0.01" min="0" value={form.minPayment} onChange={set('minPayment')} />
+        <input type="number" step="0.01" min="0" value={form.minPayment} onChange={set('minPayment')} disabled={linked} />
       </label>
       <label>
         Statement closes on day
-        <input required type="number" min="1" max="31" value={form.statementDay} onChange={set('statementDay')} placeholder="1–31" />
+        <input required type="number" min="1" max="31" disabled={linked} value={form.statementDay} onChange={set('statementDay')} placeholder="1–31" />
       </label>
       <label>
         Payment due on day
-        <input required type="number" min="1" max="31" value={form.dueDay} onChange={set('dueDay')} placeholder="1–31" />
+        <input required type="number" min="1" max="31" disabled={linked} value={form.dueDay} onChange={set('dueDay')} placeholder="1–31" />
       </label>
       <label className="span-2">
         Notes
@@ -67,7 +75,7 @@ function CardForm({ initial, onSave, onCancel }) {
   );
 }
 
-export default function CardsPanel({ items, loaded, add, update, remove, readOnly = false, emptyAction }) {
+export default function CardsPanel({ items, loaded, add, update, remove, readOnly = false, emptyAction, headerExtra }) {
   const [editing, setEditing] = useState(null); // null | 'new' | card id
 
   const sorted = [...items].sort((a, b) => nextMonthlyDate(a.dueDay) - nextMonthlyDate(b.dueDay));
@@ -76,6 +84,7 @@ export default function CardsPanel({ items, loaded, add, update, remove, readOnl
     <section className="panel">
       <div className="panel-header">
         <h2>Credit cards</h2>
+        {headerExtra}
         {!readOnly && editing !== 'new' && <button onClick={() => setEditing('new')}>+ Add card</button>}
       </div>
 
@@ -106,6 +115,12 @@ export default function CardsPanel({ items, loaded, add, update, remove, readOnl
                 <div className="card-title">
                   <strong>{c.name}</strong>
                   {c.last4 && <span className="muted"> •••• {c.last4}</span>}
+                  {c.source === 'plaid' && (
+                    <span className="badge badge-linked" title={`Synced from ${c.institution}`}>
+                      {c.institution}
+                    </span>
+                  )}
+                  {c.isOverdue && <span className="badge badge-due">Overdue</span>}
                 </div>
                 <div className="card-balance">
                   {money(c.balance)}
@@ -148,12 +163,14 @@ export default function CardsPanel({ items, loaded, add, update, remove, readOnl
                   <button className="link" onClick={() => setEditing(c.id)}>
                     Edit
                   </button>
-                  <button
-                    className="link danger"
-                    onClick={() => window.confirm(`Delete ${c.name}?`) && remove(c.id)}
-                  >
-                    Delete
-                  </button>
+                  {c.source !== 'plaid' && (
+                    <button
+                      className="link danger"
+                      onClick={() => window.confirm(`Delete ${c.name}?`) && remove(c.id)}
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
               )}
             </li>

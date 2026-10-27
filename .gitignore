@@ -2,4 +2,8 @@ node_modules/
 dist/
 # Your personal financial data - never commit this
 data/
+# Plaid keys - never commit these
+.env
+.env.*
+!.env.example
 release/

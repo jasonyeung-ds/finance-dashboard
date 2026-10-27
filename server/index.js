@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseEnv } from 'node:util';
+import { plaidRouter } from './plaid.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, '..', 'dist');
@@ -22,6 +24,22 @@ export function defaultDataFile() {
 }
 
 const exists = (file) => access(file).then(() => true, () => false);
+
+/**
+ * Loads Plaid keys from .env files (the project folder in development, next to the data file
+ * for the desktop app). Real environment variables win; files never overwrite them.
+ */
+async function loadEnvFiles(files) {
+  for (const file of files) {
+    let vars;
+    try {
+      vars = parseEnv(await readFile(file, 'utf8'));
+    } catch {
+      continue;
+    }
+    for (const [key, value] of Object.entries(vars)) process.env[key] ??= value;
+  }
+}
 
 /** Copies data/db.json to the shared location the first time; the original is left as a backup. */
 async function migrateLegacyData(dbPath) {
@@ -98,6 +116,7 @@ const schemas = {
   },
 };
 const required = { cards: 'name', events: 'date' };
+const EDITABLE_WHEN_LINKED = new Set(['name', 'notes']);
 
 function clean(name, body, partial) {
   const out = {};
@@ -139,10 +158,12 @@ function securityHeaders(_req, res, next) {
   res.set({
     'Content-Security-Policy': [
       "default-src 'self'",
-      "script-src 'self'",
+      // Plaid's bank login window must load from Plaid's own CDN; nothing else from outside is allowed.
+      "script-src 'self' https://cdn.plaid.com/link/v2/stable/link-initialize.js",
+      'frame-src https://cdn.plaid.com/',
       "style-src 'self' 'unsafe-inline'", // React sets inline widths on the utilization bars
       "img-src 'self' data:",
-      "connect-src 'self'",
+      "connect-src 'self' https://sandbox.plaid.com https://production.plaid.com",
       "object-src 'none'",
       "base-uri 'none'",
       "form-action 'self'",
@@ -187,7 +208,12 @@ function collection(name, store) {
     const updated = await store.mutate((db) => {
       const i = db[name].findIndex((x) => x.id === req.params.id);
       if (i === -1) return null;
-      db[name][i] = { ...db[name][i], ...changes };
+      // Bank-synced cards: the bank owns the numbers and dates; you can still rename and add notes.
+      const patch =
+        db[name][i].source === 'plaid'
+          ? Object.fromEntries(Object.entries(changes).filter(([k]) => EDITABLE_WHEN_LINKED.has(k)))
+          : changes;
+      db[name][i] = { ...db[name][i], ...patch };
       return db[name][i];
     });
     if (!updated) return res.status(404).json({ error: 'Not found' });
@@ -196,11 +222,16 @@ function collection(name, store) {
 
   router.delete('/:id', async (req, res) => {
     const removed = await store.mutate((db) => {
-      const before = db[name].length;
-      db[name] = db[name].filter((x) => x.id !== req.params.id);
-      return db[name].length < before;
+      const item = db[name].find((x) => x.id === req.params.id);
+      if (!item) return 'missing';
+      if (item.source === 'plaid') return 'linked';
+      db[name] = db[name].filter((x) => x !== item);
+      return 'removed';
     });
-    if (!removed) return res.status(404).json({ error: 'Not found' });
+    if (removed === 'missing') return res.status(404).json({ error: 'Not found' });
+    if (removed === 'linked') {
+      return res.status(409).json({ error: 'This card syncs from your bank. Disconnect the bank to remove it.' });
+    }
     res.status(204).end();
   });
 
@@ -218,6 +249,7 @@ export function createApp(dbPath) {
   api.use(requireJson, express.json({ limit: '50kb' }));
   api.use('/cards', collection('cards', store));
   api.use('/events', collection('events', store));
+  api.use('/plaid', plaidRouter({ store, dataFile: dbPath }));
   app.use('/api', api);
 
   // Serve the built frontend (after `vite build`), so one server runs the whole app.
@@ -236,18 +268,27 @@ export function createApp(dbPath) {
 /** Starts the server on 127.0.0.1 only, so nothing else on your network can reach it. Port 0 = any free port. */
 export async function startServer({ port = 3001, dataFile = defaultDataFile() } = {}) {
   await migrateLegacyData(dataFile);
+  await loadEnvFiles([path.join(__dirname, '..', '.env'), path.join(path.dirname(dataFile), '.env')]);
   const app = createApp(dataFile);
   return new Promise((resolve, reject) => {
-    const server = app.listen(port, '127.0.0.1', () => {
+    // Listen for 'listening'/'error' directly: Express 5 also calls a listen() callback on failure.
+    const server = app.listen(port, '127.0.0.1');
+    server.once('listening', () => {
       const url = `http://127.0.0.1:${server.address().port}`;
       console.log(`Server running at ${url} (data: ${dataFile})`);
       resolve({ server, url, dataFile });
     });
-    server.on('error', reject);
+    server.once('error', (err) => {
+      if (err.code === 'EADDRINUSE') err.message = `Port ${port} is already in use. Is the app already running?`;
+      reject(err);
+    });
   });
 }
 
 // Run directly with `node server/index.js` (used by `npm run dev` and `npm start`).
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  startServer({ port: Number(process.env.PORT) || 3001 });
+  startServer({ port: Number(process.env.PORT) || 3001 }).catch((err) => {
+    console.error(`Could not start the server: ${err.message}`);
+    process.exit(1);
+  });
 }

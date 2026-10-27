@@ -5,6 +5,8 @@ import Upcoming from './components/Upcoming.jsx';
 import CardsPanel from './components/CardsPanel.jsx';
 import EventsPanel from './components/EventsPanel.jsx';
 import CalendarView from './components/CalendarView.jsx';
+import BankConnections, { SyncStatus } from './components/BankConnections.jsx';
+import { usePlaid } from './usePlaid.js';
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
@@ -31,9 +33,13 @@ function useCollection(api, setError) {
   const [items, setItems] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
+  const reload = useCallback(
+    () => api.list().then(setItems).catch((e) => setError(e.message)).finally(() => setLoaded(true)),
+    [api, setError],
+  );
   useEffect(() => {
-    api.list().then(setItems).catch((e) => setError(e.message)).finally(() => setLoaded(true));
-  }, [api, setError]);
+    reload();
+  }, [reload]);
 
   const wrap = useCallback(
     (fn) => async (...args) => {
@@ -52,6 +58,7 @@ function useCollection(api, setError) {
   return {
     items,
     loaded,
+    reload,
     add: wrap(async (data) => {
       const item = await api.create(data);
       setItems((xs) => [...xs, item]);
@@ -72,6 +79,7 @@ export default function App() {
   const cards = useCollection(cardsApi, setError);
   const events = useCollection(eventsApi, setError);
   const [tab, setTab] = useHashTab();
+  const plaid = usePlaid(setError, cards.reload);
 
   return (
     <div className="app">
@@ -121,6 +129,7 @@ export default function App() {
               <CardsPanel
                 {...cards}
                 readOnly
+                headerExtra={<SyncStatus plaid={plaid} />}
                 emptyAction={<button onClick={() => setTab('manage')}>Add your first card</button>}
               />
             </div>
@@ -135,6 +144,7 @@ export default function App() {
 
       {tab === 'manage' && (
         <div className="manage">
+          <BankConnections plaid={plaid} />
           <CardsPanel {...cards} />
           <EventsPanel {...events} />
         </div>
